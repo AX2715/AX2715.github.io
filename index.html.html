@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Auditoría Visual de SST - IPERC IA</title>
+    
+    <!-- Librería para procesar Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --panel-bg: #282a36;
+            --text-color: #f8f8f2;
+            --accent-color: #50fa7b;
+            --accent-hover: #40c763;
+            --error-color: #ff5555;
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container { max-width: 1000px; width: 100%; }
+
+        .header { display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+        .header h1 { font-size: 1.3rem; margin: 0; color: #fff; line-height: 1.3; }
+
+        .panel { background-color: var(--panel-bg); border: 1px solid #444; border-radius: var(--border-radius); padding: 15px; margin-bottom: 15px; }
+        .panel-title { font-weight: bold; margin-top: 0; margin-bottom: 12px; font-size: 1rem; color: var(--accent-color); }
+        label.form-label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #ccc; }
+        
+        input[type="password"], select {
+            width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #555; border-radius: 6px;
+            background-color: #1a1a24; color: white; font-size: 16px; box-sizing: border-box; outline: none;
+        }
+        input[type="password"]:focus, select:focus { border-color: var(--accent-color); }
+
+        .warning-text { font-size: 0.78rem; color: #f1fa8c; margin-top: -4px; margin-bottom: 12px; line-height: 1.3; }
+
+        /* --- CONTENEDOR DE SUBIDA CORREGIDO COMO LABEL --- */
+        .file-upload-container {
+            display: block; /* Asegura que tome todo el ancho */
+            border: 2px dashed #555; padding: 25px 10px; text-align: center; border-radius: var(--border-radius);
+            background-color: #1a1a24; cursor: pointer; transition: border-color 0.3s;
+        }
+        .file-upload-container:active, .file-upload-container:hover { border-color: var(--accent-color); }
+
+        #imagePreview { max-width: 100%; max-height: 300px; margin-top: 10px; display: none; border-radius: 6px; margin-left: auto; margin-right: auto; object-fit: contain; }
+
+        .btn {
+            display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; padding: 16px;
+            background-color: var(--accent-color); color: #000; border: none; border-radius: var(--border-radius);
+            font-size: 1rem; font-weight: bold; cursor: pointer; transition: transform 0.1s, filter 0.2s;
+        }
+        .btn:active { transform: scale(0.98); filter: brightness(0.9); }
+        .btn:disabled { background-color: #555; color: #888; cursor: not-allowed; transform: none; }
+
+        .error-message {
+            background-color: rgba(255, 85, 85, 0.2); color: var(--error-color); padding: 12px;
+            border: 1px solid var(--error-color); border-radius: var(--border-radius); margin-top: 15px; display: none; font-size: 0.85rem; font-weight: bold;
+        }
+
+        #resultsArea { display: none; margin-top: 15px; }
+        .loader { display: none; text-align: center; margin-top: 15px; padding: 15px; background-color: var(--panel-bg); border-radius: var(--border-radius); font-size: 0.9rem; }
+
+        /* --- ESTILOS DE LA TABLA MATRIZ IPERC --- */
+        #outputContent { line-height: 1.5; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #outputContent table { width: 100%; min-width: 800px; border-collapse: collapse; background-color: #1a1a24; color: #fff; margin-bottom: 20px; }
+        
+        #outputContent th, #outputContent td {
+            border: 1px solid #666; padding: 10px; text-align: left; font-size: 0.85rem; vertical-align: middle;
+        }
+        
+        #outputContent th { background-color: #282a36; color: #fff; font-weight: bold; text-align: center; }
+
+        .th-a { background-color: #ff0000 !important; color: white !important; }
+        .th-m { background-color: #ffff00 !important; color: black !important; }
+        .th-b { background-color: #00b050 !important; color: white !important; }
+
+        .marca-x {
+            display: inline-block; width: 100%; height: 100%; font-weight: bold;
+            text-align: center; padding: 5px 0; border-radius: 3px;
+        }
+        .x-a { background-color: #ff0000; color: white; }
+        .x-m { background-color: #ffff00; color: black; }
+        .x-b { background-color: #00b050; color: white; }
+
+        .celda-corta { width: 40px; text-align: center !important; padding: 5px !important; }
+        
+        .informe-diagnostico { background-color: #1e1e2e; padding: 15px; border-radius: 8px; border: 1px solid #444; }
+
+        @media (max-width: 600px) { body { padding: 10px; } .panel { padding: 12px; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🛡️ Sistema Inteligente de Identificación de Peligros - SST</h1>
+    </div>
+    
+    <div class="panel">
+        <div class="panel-title">🔑 Configuración de API</div>
+        <label class="form-label" for="apiKey">Google Gemini API Key:</label>
+        <input type="password" id="apiKey" placeholder="Pega tu clave de API de Gemini aquí...">
+        <p class="warning-text">Tu clave se procesa localmente. Obtén tu clave gratis en aistudio.google.com/apikey</p>
+        <select id="modelSelect">
+            <option value="gemini-3.6-flash">3.6 Flash (Asistencia general)</option>
+            <option value="gemini-3.5-flash-lite">3.5 Flash-Lite (Respuestas más rápidas)</option>
+            <option value="gemini-3.1-pro">3.1 Pro (Razonamiento avanzado)</option>
+        </select>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">📸 Fotografía del puesto de trabajo</div>
+        
+        <!-- CORRECCIÓN CLAVE: Usamos <label for="fileInput"> en lugar de un div con onclick -->
+        <label class="file-upload-container" id="dropZone" for="fileInput">
+            <p id="uploadText">📁 Toca aquí para tomar foto o elegir de tu galería</p>
+            <!-- Se retiró capture="environment" para permitir elegir la galería en Android/iOS -->
+            <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" style="display: none;">
+            <img id="imagePreview" alt="Vista previa de la imagen">
+        </label>
+        
+    </div>
+
+    <button class="btn" id="analyzeBtn" disabled>🚀 Ejecutar Auditoría Visual con IA</button>
+
+    <div class="error-message" id="errorMessage"></div>
+    <div class="loader" id="loader"><p>⏳ Extrayendo datos y construyendo matriz IPERC estructurada...</p></div>
+
+    <div class="panel" id="resultsArea">
+        <div class="panel-title">📋 Resultados del Análisis IPERC</div>
+        <div id="reportContainer" style="padding-top: 10px;">
+            <div id="outputContent"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadText = document.getElementById('uploadText');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const loader = document.getElementById('loader');
+    const resultsArea = document.getElementById('resultsArea');
+    const outputContent = document.getElementById('outputContent');
+    let base64Image = '';
+    let mimeType = '';
+
+    // Autocompletar la API Key si se guardó previamente
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedKey = localStorage.getItem("geminiApiKey");
+        if (savedKey) document.getElementById("apiKey").value = savedKey;
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                imagePreview.src = evt.target.result;
+                imagePreview.style.display = 'block';
+                uploadText.style.display = 'none';
+                mimeType = evt.target.result.split(';')[0].split(':')[1];
+                base64Image = evt.target.result.split(',')[1];
+                analyzeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const model = document.getElementById('modelSelect').value;
+
+        if (!apiKey) return showError("Ingresa tu API Key.");
+        if (!base64Image) return showError("Sube una imagen primero.");
+
+        // Guardar la API key localmente para no tener que pegarla cada vez
+        localStorage.setItem("geminiApiKey", apiKey);
+
+        const prompt = `
+Actúa como un Consultor Senior en SST. Analiza minuciosamente la imagen.
+Tu tarea es identificar TODOS los peligros posibles (mínimo 4 o 5 peligros diferentes). Considera herramientas, posturas, entorno, superficies, orden y falta de EPP.
+
+Necesito que devuelvas ÚNICAMENTE un objeto JSON válido con la siguiente estructura, sin texto adicional, sin bloques de código markdown y SIN comentarios dentro del JSON:
+
+{
+  "matriz": [
+    {
+      "peligro": "Descripción específica del primer peligro",
+      "riesgo": "Consecuencia o daño probable",
+      "evaluacion_iper": "A",
+      "controles": "<b>Ingeniería:</b> Control específico<br><br><b>Administrativo:</b> Control específico<br><br><b>EPP:</b> Control específico",
+      "riesgo_residual": "M"
+    },
+    {
+      "peligro": "Descripción específica del segundo peligro",
+      "riesgo": "Consecuencia o daño probable",
+      "evaluacion_iper": "M",
+      "controles": "<b>Administrativo:</b> Control específico<br><br><b>EPP:</b> Control específico",
+      "riesgo_residual": "B"
+    }
+  ],
+  "informe": "Un breve párrafo de diagnóstico general detallado."
+}
+
+Reglas críticas:
+1. El arreglo "matriz" DEBE contener al menos 4 a 5 objetos diferentes.
+2. "evaluacion_iper" y "riesgo_residual" DEBEN ser exactamente UNA de estas tres letras en mayúscula: "A", "M" o "B".
+`;
+
+        analyzeBtn.disabled = true;
+        errorMessage.style.display = 'none';
+        resultsArea.style.display = 'none';
+        loader.style.display = 'block';
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: mimeType, data: base64Image } }] }],
+                    generationConfig: { temperature: 0.2 } 
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(`Error de la API (${response.status}): ${data.error?.message || ''}`);
+
+            let rawText = data.candidates[0].content.parts[0].text;
+            
+            // Buscar explícitamente el inicio y fin del objeto JSON
+            const startIndex = rawText.indexOf('{');
+            const endIndex = rawText.lastIndexOf('}');
+
+            if (startIndex === -1 || endIndex === -1) {
+                throw new Error("La IA no devolvió un formato JSON válido.");
+            }
+
+            const jsonString = rawText.substring(startIndex, endIndex + 1);
+            const jsonData = JSON.parse(jsonString);
+
+            let tableHTML = `
+            <table id="ipercTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 20%;">DESCRIPCIÓN DEL PELIGRO</th>
+                        <th rowspan="2" style="width: 20%;">RIESGO</th>
+                        <th colspan="3">EVALUACIÓN IPER</th>
+                        <th rowspan="2" style="width: 30%;">MEDIDAS DE CONTROL A IMPLEMENTAR</th>
+                        <th colspan="3">EVALUACIÓN RIESGO RESIDUAL</th>
+                    </tr>
+                    <tr>
+                        <th class="th-a celda-corta">A</th>
+                        <th class="th-m celda-corta">M</th>
+                        <th class="th-b celda-corta">B</th>
+                        <th class="th-a celda-corta">A</th>
+                        <th class="th-m celda-corta">M</th>
+                        <th class="th-b celda-corta">B</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            jsonData.matriz.forEach(row => {
+                let iperA = row.evaluacion_iper === 'A' ? '<div class="marca-x x-a">X</div>' : '';
+                let iperM = row.evaluacion_iper === 'M' ? '<div class="marca-x x-m">X</div>' : '';
+                let iperB = row.evaluacion_iper === 'B' ? '<div class="marca-x x-b">X</div>' : '';
+
+                let resA = row.riesgo_residual === 'A' ? '<div class="marca-x x-a">X</div>' : '';
+                let resM = row.riesgo_residual === 'M' ? '<div class="marca-x x-m">X</div>' : '';
+                let resB = row.riesgo_residual === 'B' ? '<div class="marca-x x-b">X</div>' : '';
+
+                tableHTML += `
+                <tr>
+                    <td>${row.peligro}</td>
+                    <td>${row.riesgo}</td>
+                    <td class="celda-corta">${iperA}</td>
+                    <td class="celda-corta">${iperM}</td>
+                    <td class="celda-corta">${iperB}</td>
+                    <td>${marked.parse(row.controles)}</td>
+                    <td class="celda-corta">${resA}</td>
+                    <td class="celda-corta">${resM}</td>
+                    <td class="celda-corta">${resB}</td>
+                </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table>`;
+            tableHTML += `<div class="informe-diagnostico"><strong>Diagnóstico Normativo:</strong><br>${jsonData.informe}</div>`;
+
+            outputContent.innerHTML = tableHTML;
+            loader.style.display = 'none';
+            resultsArea.style.display = 'block';
+
+        } catch (err) {
+            loader.style.display = 'none';
+            showError("Hubo un error al procesar la respuesta de la IA. Detalle: " + err.message);
+        } finally {
+            analyzeBtn.disabled = false;
+        }
+    });
+
+    function showError(msg) {
+        errorMessage.textContent = '❌ ' + msg;
+        errorMessage.style.display = 'block';
+    }
+</script>
+</body>
+</html>
